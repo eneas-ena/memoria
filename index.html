@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#14213A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Jogo da Memória</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#14213A;
+  --navy-2:#1E3057;
+  --navy-3:#2A4272;
+  --ouro:#C9A227;
+  --ouro-claro:#E6C55A;
+  --creme:#FBF7EE;
+  --tinta:#16233F;
+  --acerto:#2E9E6B;
+  --erro:#D9534F;
+  --gap:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  background:var(--navy);
+  color:var(--creme);
+  font-family:'Nunito',system-ui,sans-serif;
+  overflow:hidden;
+  touch-action:manipulation;
+  -webkit-user-select:none;user-select:none;
+}
+#app{height:100dvh;display:flex;flex-direction:column;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.tela{flex:1;min-height:0;display:none;flex-direction:column}
+.tela.ativa{display:flex}
+
+/* ---------- tipografia ---------- */
+h1,h2,h3,.num{font-family:'Baloo 2',cursive;font-weight:600;letter-spacing:.01em}
+h1{font-size:clamp(26px,7vw,40px);line-height:1.1}
+h2{font-size:clamp(19px,5vw,26px)}
+.legenda{font-size:14px;color:#9FB0CE;line-height:1.5}
+
+/* ---------- menu ---------- */
+.rolavel{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:24px 20px 32px;flex:1;min-height:0}
+.marca{text-align:center;margin-bottom:26px}
+.emblema{width:56px;height:56px;margin:0 auto 10px;display:block}
+.fase{margin-bottom:26px}
+.fase-cab{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+.fase-num{font-family:'Baloo 2',cursive;font-size:13px;font-weight:700;color:var(--navy);background:var(--ouro);border-radius:999px;padding:1px 10px;letter-spacing:.06em}
+.fase-idade{font-size:12px;color:#8296B8;margin-bottom:12px}
+.lista{display:grid;gap:8px}
+.item{
+  display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+  background:var(--navy-2);border:1px solid #2C4066;border-radius:14px;
+  padding:14px 16px;color:var(--creme);font:inherit;font-size:16px;cursor:pointer;
+  transition:transform .12s ease,border-color .12s ease;
+}
+.item:hover{border-color:var(--ouro)}
+.item:active{transform:scale(.985)}
+.item:disabled{opacity:.38;cursor:default}
+.item:disabled:hover{border-color:#2C4066}
+.item .ic{width:30px;height:30px;flex:none}
+.item .txt{flex:1;min-width:0}
+.item .rec{font-family:'Baloo 2',cursive;font-size:13px;color:var(--ouro-claro);white-space:nowrap}
+.item .breve{font-size:11px;color:#8296B8;text-transform:uppercase;letter-spacing:.08em}
+
+/* ---------- seletor de nível ---------- */
+.niveis{display:flex;gap:8px;margin-bottom:14px}
+.nivel{
+  flex:1;background:transparent;border:1px solid #2C4066;border-radius:999px;
+  padding:9px 0;color:#9FB0CE;font:inherit;font-size:14px;font-weight:600;cursor:pointer;
+}
+.nivel[aria-pressed="true"]{background:var(--ouro);border-color:var(--ouro);color:var(--navy)}
+
+/* ---------- barra de status ---------- */
+.barra{display:flex;align-items:center;gap:6px;padding:10px 12px 8px}
+.voltar{background:none;border:none;color:#9FB0CE;font:inherit;font-size:22px;line-height:1;padding:4px 8px;cursor:pointer}
+.chips{flex:1;display:flex;gap:6px;justify-content:flex-end}
+.chip{
+  display:flex;align-items:center;gap:5px;background:var(--navy-2);
+  border-radius:999px;padding:5px 11px;font-family:'Baloo 2',cursive;font-size:15px;
+}
+.chip small{font-family:'Nunito',sans-serif;font-size:10px;font-weight:700;color:#8296B8;text-transform:uppercase;letter-spacing:.06em}
+.chip.ok{color:#7FD9AE}
+.chip.no{color:#F0918D}
+
+/* ---------- tabuleiro ---------- */
+#area{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px 12px;position:relative}
+#tabuleiro{display:grid;gap:var(--gap);grid-template-columns:repeat(var(--cols),var(--carta))}
+.carta{
+  width:var(--carta);height:var(--carta);
+  background:none;border:none;padding:0;cursor:pointer;
+  perspective:600px;
+}
+.carta .inner{
+  position:relative;width:100%;height:100%;
+  transition:transform .38s cubic-bezier(.4,.9,.3,1.2);
+  transform-style:preserve-3d;
+}
+.carta.virada .inner{transform:rotateY(180deg)}
+.face{
+  position:absolute;inset:0;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  overflow:hidden;
+}
+.verso{background:var(--navy-2);border:1.5px solid var(--navy-3)}
+.verso svg{width:46%;height:46%;opacity:.85}
+.frente{
+  background:var(--creme);color:var(--tinta);transform:rotateY(180deg);
+  border:1.5px solid #E2D8C2;
+  font-family:'Baloo 2',cursive;font-weight:600;
+  font-size:calc(var(--carta) * .30);
+}
+.frente.expr{font-size:calc(var(--carta) * .21)}
+.frente.palavra{font-size:calc(var(--carta) * .17);padding:4px;text-align:center;line-height:1.1;word-break:break-word}
+.frente svg{width:62%;height:62%}
+.carta.certa .frente{border-color:var(--acerto);box-shadow:inset 0 0 0 2px var(--acerto)}
+.carta.errada .frente{border-color:var(--erro);box-shadow:inset 0 0 0 2px var(--erro)}
+.carta.certa{pointer-events:none}
+.carta.saiu .inner{opacity:.5}
+
+/* amostra de cor com textura (segunda pista, para daltonismo) */
+.amostra{width:100%;height:100%;position:relative}
+.amostra::after{content:"";position:absolute;inset:0;opacity:.28}
+.tx-listras::after{background:repeating-linear-gradient(45deg,#000 0 4px,transparent 4px 10px)}
+.tx-pontos::after{background:radial-gradient(#000 1.6px,transparent 1.7px);background-size:10px 10px}
+.tx-grade::after{background:repeating-linear-gradient(0deg,#000 0 1.5px,transparent 1.5px 9px),repeating-linear-gradient(90deg,#000 0 1.5px,transparent 1.5px 9px)}
+.tx-ondas::after{background:repeating-linear-gradient(-45deg,#fff 0 3px,transparent 3px 9px)}
+.tx-lisa::after{opacity:0}
+.tx-cruz::after{background:repeating-linear-gradient(45deg,#000 0 2px,transparent 2px 11px),repeating-linear-gradient(-45deg,#000 0 2px,transparent 2px 11px)}
+
+/* ---------- rodapé do jogo ---------- */
+.rodape{display:flex;gap:8px;padding:8px 12px 14px;justify-content:center}
+.btn{
+  background:var(--navy-2);border:1px solid #2C4066;border-radius:999px;
+  padding:10px 18px;color:var(--creme);font:inherit;font-size:14px;font-weight:600;cursor:pointer;
+}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.35;cursor:default}
+.btn.ouro{background:var(--ouro);border-color:var(--ouro);color:var(--navy);font-weight:700}
+
+/* ---------- contagem e resultado ---------- */
+#contagem{
+  position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  font-family:'Baloo 2',cursive;font-size:96px;color:var(--ouro);
+  text-shadow:0 4px 24px rgba(0,0,0,.6);pointer-events:none;
+}
+#contagem.on{display:flex}
+#resultado{
+  position:absolute;inset:0;background:rgba(20,33,58,.94);display:none;
+  align-items:center;justify-content:center;padding:20px;z-index:5;
+}
+#resultado.on{display:flex}
+.painel{width:100%;max-width:330px;background:var(--navy-2);border:1px solid var(--navy-3);border-radius:20px;padding:24px 22px;text-align:center}
+.painel h2{color:var(--ouro);margin-bottom:4px}
+.placar{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}
+.placar div{background:var(--navy);border-radius:12px;padding:10px 6px}
+.placar .num{display:block;font-size:24px;line-height:1.2}
+.placar small{font-size:10px;color:#8296B8;text-transform:uppercase;letter-spacing:.07em}
+.recorde{font-size:13px;color:var(--ouro-claro);margin-bottom:16px;min-height:18px}
+.acoes{display:flex;gap:8px}
+.acoes .btn{flex:1;justify-content:center;text-align:center}
+
+@media (prefers-reduced-motion: reduce){
+  .carta .inner{transition-duration:.01ms}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ================= MENU ================= -->
+  <section class="tela ativa" id="tela-menu">
+    <div class="rolavel">
+      <div class="marca">
+        <svg class="emblema" viewBox="0 0 48 48" aria-hidden="true">
+          <rect x="3" y="3" width="42" height="42" rx="10" fill="#1E3057" stroke="#C9A227" stroke-width="1.5"/>
+          <path d="M24 12l4.2 7.8L36 24l-7.8 4.2L24 36l-4.2-7.8L12 24l7.8-4.2z" fill="#C9A227"/>
+        </svg>
+        <h1>Jogo da Memória</h1>
+        <p class="legenda">Encontre os pares. Três fases, quinze jogos.</p>
+      </div>
+
+      <div class="niveis" role="group" aria-label="Nível de dificuldade">
+        <button class="nivel" data-nivel="normal" aria-pressed="true">Normal</button>
+        <button class="nivel" data-nivel="dificil" aria-pressed="false">Difícil</button>
+      </div>
+
+      <div id="fases"></div>
+    </div>
+  </section>
+
+  <!-- ================= JOGO ================= -->
+  <section class="tela" id="tela-jogo">
+    <div class="barra">
+      <button class="voltar" id="btn-sair" aria-label="Voltar ao menu">&#8592;</button>
+      <div class="chips">
+        <span class="chip ok"><small>acertos</small><b id="c-acertos">0</b></span>
+        <span class="chip no"><small>erros</small><b id="c-erros">0</b></span>
+        <span class="chip"><small>tempo</small><b id="c-tempo">0:00</b></span>
+      </div>
+    </div>
+
+    <div id="area">
+      <div id="tabuleiro"></div>
+      <div id="contagem"></div>
+      <div id="resultado">
+        <div class="painel">
+          <h2 id="r-titulo">Muito bem!</h2>
+          <p class="legenda" id="r-sub"></p>
+          <div class="placar">
+            <div><b class="num" id="r-tempo">0:00</b><small>tempo</small></div>
+            <div><b class="num" id="r-jogadas">0</b><small>jogadas</small></div>
+            <div><b class="num" id="r-acertos">0</b><small>acertos</small></div>
+            <div><b class="num" id="r-erros">0</b><small>erros</small></div>
+          </div>
+          <p class="recorde" id="r-recorde"></p>
+          <div class="acoes">
+            <button class="btn" id="r-menu">Escolher outro</button>
+            <button class="btn ouro" id="r-denovo">Jogar de novo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rodape">
+      <button class="btn" id="btn-espiar">Espiar (2)</button>
+      <button class="btn" id="btn-reiniciar">Recomeçar</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+"use strict";
+
+/* =========================================================================
+   1. BANCOS DE CONTEÚDO
+   ========================================================================= */
+
+const FIGURAS = [
+  ['circulo',   '<circle cx="24" cy="24" r="17" fill="#2A6FD6"/>'],
+  ['quadrado',  '<rect x="8" y="8" width="32" height="32" rx="3" fill="#D9534F"/>'],
+  ['triangulo', '<path d="M24 7l17 30H7z" fill="#2E9E6B"/>'],
+  ['estrela',   '<path d="M24 6l5.3 11.6L42 19l-9 8.9 2.3 12.6L24 34.5 12.7 40.5 15 27.9 6 19l12.7-1.4z" fill="#E0A31C"/>'],
+  ['losango',   '<path d="M24 5l19 19-19 19L5 24z" fill="#8B5CC4"/>'],
+  ['hexagono',  '<path d="M15 7h18l9 17-9 17H15L6 24z" fill="#1FA8A0"/>'],
+  ['coracao',   '<path d="M24 41C10 31 5 24 5 17.5 5 11 10 7 15 7c4 0 7 2 9 5 2-3 5-5 9-5 5 0 10 4 10 10.5C43 24 38 31 24 41z" fill="#E05C8A"/>'],
+  ['cruz',      '<path d="M19 6h10v13h13v10H29v13H19V29H6V19h13z" fill="#4A6EA8"/>'],
+  ['gota',      '<path d="M24 5c9 11 14 17 14 23a14 14 0 11-28 0c0-6 5-12 14-23z" fill="#3AA0DE"/>'],
+  ['anel',      '<path d="M24 6a18 18 0 100 36 18 18 0 100-36zm0 10a8 8 0 110 16 8 8 0 110-16z" fill="#C0653A"/>']
+];
+
+const CORES = [
+  ['Vermelho', '#D22B25', 'tx-lisa'],
+  ['Azul',     '#1F5FBF', 'tx-lisa'],
+  ['Amarelo',  '#EDBB16', 'tx-pontos'],
+  ['Verde',    '#2E9E4F', 'tx-listras'],
+  ['Laranja',  '#E8761C', 'tx-ondas'],
+  ['Roxo',     '#7B3FBF', 'tx-grade'],
+  ['Rosa',     '#E56AA0', 'tx-pontos'],
+  ['Marrom',   '#7A4A21', 'tx-lisa'],
+  ['Cinza',    '#8C8C8C', 'tx-cruz'],
+  ['Preto',    '#1B1B1B', 'tx-lisa'],
+  ['Branco',   '#FFFFFF', 'tx-grade'],
+  ['Ciano',    '#1BA9B5', 'tx-ondas']
+];
+
+/* =========================================================================
+   2. UTILITÁRIOS
+   ========================================================================= */
+
+const sortear = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+function embaralhar(lista){
+  const a = lista.slice();
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function amostra(lista, n){ return embaralhar(lista).slice(0, n); }
+
+function relogio(ms){
+  const s = Math.floor(ms / 1000);
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+/* =========================================================================
+   3. FACES DAS CARTAS
+   O motor não sabe o que a carta mostra — só sabe casar `par`.
+   Cada face é { tipo, valor }. Basta um renderizador por tipo.
+   ========================================================================= */
+
+const FACES = {
+  figura: f => ['', '<svg viewBox="0 0 48 48" aria-hidden="true">' + f.valor[1] + '</svg>'],
+  numero: f => ['', String(f.valor)],
+  expressao: f => ['expr', f.valor],
+  palavra: f => ['palavra', f.valor],
+  cor: f => ['', '<span class="amostra ' + f.valor[2] + '" style="background:' + f.valor[1] + '"></span>']
+};
+
+/* =========================================================================
+   4. REGISTRO DE MODOS
+   Para acrescentar um jogo novo, basta um objeto aqui com `gerar(nPares)`
+   devolvendo [{ par, a, b }]. Nada mais no motor precisa mudar.
+   ========================================================================= */
+
+function nivelPadrao(normal, dificil){ return { normal, dificil }; }
+
+const MODOS = [
+{
+  fase: 1, id: 'f1-geometricas', nome: 'Figuras geométricas',
+  icone: '<svg viewBox="0 0 48 48"><circle cx="16" cy="16" r="10" fill="#2A6FD6"/><path d="M32 26l12 16H20z" fill="#E0A31C"/></svg>',
+  niveis: nivelPadrao({ pecas: 12, cols: 3 }, { pecas: 16, cols: 4 }),
+  gerar(nPares){
+    return amostra(FIGURAS, nPares).map((f, i) => ({
+      par: 'fig' + i,
+      a: { tipo: 'figura', valor: f },
+      b: { tipo: 'figura', valor: f }
+    }));
+  }
+},
+{
+  fase: 2, id: 'f2-multiplicacao', nome: 'Multiplicação',
+  icone: '<svg viewBox="0 0 48 48"><path d="M14 14l20 20M34 14L14 34" stroke="#E0A31C" stroke-width="6" stroke-linecap="round"/></svg>',
+  niveis: nivelPadrao({ pecas: 16, cols: 4 }, { pecas: 20, cols: 4 }),
+  gerar(nPares){
+    // Regra crítica: cada RESULTADO precisa ser único no tabuleiro.
+    // Sem isso, 3×4 e 6×2 dariam 12 e o par ficaria ambíguo.
+    const usados = new Set(), pares = [];
+    let tentativas = 0;
+    while (pares.length < nPares && tentativas++ < 800){
+      const x = sortear(2, 12), y = sortear(2, 12), p = x * y;
+      if (usados.has(p)) continue;
+      usados.add(p);
+      pares.push({
+        par: 'p' + p,
+        a: { tipo: 'expressao', valor: x + ' × ' + y },
+        b: { tipo: 'numero', valor: p }
+      });
+    }
+    return pares;
+  }
+},
+{
+  fase: 3, id: 'f3-cores', nome: 'Cores',
+  icone: '<svg viewBox="0 0 48 48"><circle cx="18" cy="18" r="12" fill="#D22B25"/><circle cx="30" cy="30" r="12" fill="#1F5FBF" opacity=".85"/></svg>',
+  niveis: nivelPadrao({ pecas: 16, cols: 4 }, { pecas: 20, cols: 4 }),
+  gerar(nPares){
+    return amostra(CORES, nPares).map((c, i) => ({
+      par: 'cor' + i,
+      a: { tipo: 'cor', valor: c },
+      b: { tipo: 'palavra', valor: c[0] }
+    }));
+  }
+}
+];
+
+// Os doze restantes ficam listados e desativados até receberem seu `gerar`.
+const PENDENTES = [
+  { fase: 1, nome: 'Animais' }, { fase: 1, nome: 'Frutas' },
+  { fase: 1, nome: 'Emojis' },  { fase: 1, nome: 'Mix' },
+  { fase: 2, nome: 'Soma' },    { fase: 2, nome: 'Subtração' },
+  { fase: 2, nome: 'Divisão' }, { fase: 2, nome: 'Mix' },
+  { fase: 3, nome: 'Animais' }, { fase: 3, nome: 'Frutas' },
+  { fase: 3, nome: 'Instrumentos musicais' }, { fase: 3, nome: 'Mix de objetos' }
+];
+
+const FASES = [
+  { n: 1, titulo: 'Figuras iguais', idade: 'a partir de 4 anos' },
+  { n: 2, titulo: 'Cálculo e resposta', idade: 'a partir de 8 anos' },
+  { n: 3, titulo: 'Nome e figura', idade: 'a partir de 6 anos' }
+];
+
+/* =========================================================================
+   5. RECORDES
+   ========================================================================= */
+
+const chaveRecorde = (id, nivel) => 'memoria:v1:' + id + ':' + nivel;
+
+function lerRecorde(id, nivel){
+  try { return JSON.parse(localStorage.getItem(chaveRecorde(id, nivel))); }
+  catch (e) { return null; }
+}
+
+function gravarRecorde(id, nivel, dados){
+  try { localStorage.setItem(chaveRecorde(id, nivel), JSON.stringify(dados)); }
+  catch (e) { /* modo privado do Safari: o jogo segue sem recorde */ }
+}
+
+/* =========================================================================
+   6. MOTOR
+   ========================================================================= */
+
+const ESPIADAS_MAX = 2;
+const PENALIDADE_MS = 10000;
+
+const el = id => document.getElementById(id);
+const tabuleiro = el('tabuleiro');
+const area = el('area');
+
+let nivel = 'normal';
+let jogo = null;
+
+function novoJogo(modo){
+  const cfg = modo.niveis[nivel];
+  const pares = modo.gerar(cfg.pecas / 2);
+
+  const cartas = [];
+  pares.forEach(p => {
+    cartas.push({ par: p.par, face: p.a });
+    cartas.push({ par: p.par, face: p.b });
+  });
+
+  jogo = {
+    modo, cfg,
+    cartas: embaralhar(cartas),
+    total: pares.length,
+    abertas: [],
+    travado: true,
+    acertos: 0, erros: 0, jogadas: 0,
+    espiadas: 0, penalidade: 0,
+    inicio: 0, decorrido: 0, cronometro: null,
+    fim: false
+  };
+
+  desenhar();
+  atualizarPlacar();
+  el('btn-espiar').disabled = false;
+  el('btn-espiar').textContent = 'Espiar (' + ESPIADAS_MAX + ')';
+  el('resultado').classList.remove('on');
+  previa();
+}
+
+function desenhar(){
+  tabuleiro.style.setProperty('--cols', jogo.cfg.cols);
+  tabuleiro.innerHTML = jogo.cartas.map((c, i) => {
+    const [classe, conteudo] = FACES[c.face.tipo](c.face);
+    return '<button class="carta" data-i="' + i + '" aria-label="Carta ' + (i + 1) + '">' +
+             '<span class="inner">' +
+               '<span class="face verso"><svg viewBox="0 0 48 48" aria-hidden="true">' +
+                 '<path d="M24 8l4 10 10 4-10 4-4 10-4-10-10-4 10-4z" fill="#C9A227"/></svg></span>' +
+               '<span class="face frente ' + classe + '">' + conteudo + '</span>' +
+             '</span>' +
+           '</button>';
+  }).join('');
+  ajustar();
+}
+
+/* Dimensiona a carta pelo espaço realmente disponível.
+   O tabuleiro nunca rola: se não couber, a carta encolhe. */
+function ajustar(){
+  if (!jogo) return;
+  const cols = jogo.cfg.cols;
+  const linhas = Math.ceil(jogo.cartas.length / cols);
+  const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap')) || 8;
+  const larg = area.clientWidth - 24;
+  const alt  = area.clientHeight - 8;
+  const porLargura = (larg - gap * (cols - 1)) / cols;
+  const porAltura  = (alt  - gap * (linhas - 1)) / linhas;
+  const lado = Math.max(44, Math.floor(Math.min(porLargura, porAltura, 130)));
+  tabuleiro.style.setProperty('--carta', lado + 'px');
+}
+
+window.addEventListener('resize', ajustar);
+window.addEventListener('orientationchange', () => setTimeout(ajustar, 120));
+
+function previa(){
+  const alvo = el('contagem');
+  document.querySelectorAll('.carta').forEach(c => c.classList.add('virada'));
+  let n = 3;
+  alvo.textContent = n;
+  alvo.classList.add('on');
+  const tique = setInterval(() => {
+    n--;
+    if (n > 0){ alvo.textContent = n; return; }
+    clearInterval(tique);
+    alvo.classList.remove('on');
+    document.querySelectorAll('.carta').forEach(c => c.classList.remove('virada'));
+    setTimeout(() => { jogo.travado = false; iniciarCronometro(); }, 400);
+  }, 1000);
+}
+
+function iniciarCronometro(){
+  jogo.inicio = Date.now();
+  jogo.cronometro = setInterval(() => {
+    jogo.decorrido = Date.now() - jogo.inicio;
+    el('c-tempo').textContent = relogio(jogo.decorrido + jogo.penalidade);
+  }, 250);
+}
+
+function pararCronometro(){
+  if (jogo && jogo.cronometro){ clearInterval(jogo.cronometro); jogo.cronometro = null; }
+}
+
+tabuleiro.addEventListener('click', ev => {
+  const btn = ev.target.closest('.carta');
+  if (!btn || !jogo || jogo.travado || jogo.fim) return;
+  const i = Number(btn.dataset.i);
+  if (btn.classList.contains('certa') || btn.classList.contains('virada')) return;
+
+  btn.classList.add('virada');
+  jogo.abertas.push({ i, btn });
+
+  if (jogo.abertas.length < 2) return;
+
+  jogo.travado = true;
+  jogo.jogadas++;
+  const [x, y] = jogo.abertas;
+
+  if (jogo.cartas[x.i].par === jogo.cartas[y.i].par){
+    jogo.acertos++;
+    x.btn.classList.add('certa');
+    y.btn.classList.add('certa');
+    jogo.abertas = [];
+    jogo.travado = false;
+    atualizarPlacar();
+    if (jogo.acertos === jogo.total) setTimeout(encerrar, 500);
+  } else {
+    jogo.erros++;
+    atualizarPlacar();
+    x.btn.classList.add('errada');
+    y.btn.classList.add('errada');
+    setTimeout(() => {
+      x.btn.classList.remove('virada', 'errada');
+      y.btn.classList.remove('virada', 'errada');
+      jogo.abertas = [];
+      jogo.travado = false;
+    }, 850);
+  }
+});
+
+function atualizarPlacar(){
+  el('c-acertos').textContent = jogo.acertos;
+  el('c-erros').textContent = jogo.erros;
+}
+
+el('btn-espiar').addEventListener('click', () => {
+  if (!jogo || jogo.travado || jogo.fim || jogo.espiadas >= ESPIADAS_MAX) return;
+  jogo.espiadas++;
+  jogo.penalidade += PENALIDADE_MS;
+  jogo.travado = true;
+  const restam = ESPIADAS_MAX - jogo.espiadas;
+  el('btn-espiar').textContent = restam ? 'Espiar (' + restam + ')' : 'Sem espiadas';
+  el('btn-espiar').disabled = restam === 0;
+
+  const ocultas = [...document.querySelectorAll('.carta:not(.certa):not(.virada)')];
+  ocultas.forEach(c => c.classList.add('virada'));
+  setTimeout(() => {
+    ocultas.forEach(c => c.classList.remove('virada'));
+    jogo.abertas = [];
+    jogo.travado = false;
+  }, 1400);
+});
+
+function encerrar(){
+  jogo.fim = true;
+  pararCronometro();
+  const tempo = jogo.decorrido + jogo.penalidade;
+
+  el('r-tempo').textContent = relogio(tempo);
+  el('r-jogadas').textContent = jogo.jogadas;
+  el('r-acertos').textContent = jogo.acertos;
+  el('r-erros').textContent = jogo.erros;
+  el('r-sub').textContent = jogo.modo.nome + ' · ' + (nivel === 'normal' ? 'normal' : 'difícil') +
+    (jogo.espiadas ? ' · ' + jogo.espiadas + ' espiada' + (jogo.espiadas > 1 ? 's' : '') : '');
+
+  const anterior = lerRecorde(jogo.modo.id, nivel);
+  const melhorou = !anterior || tempo < anterior.tempo;
+  if (melhorou){
+    gravarRecorde(jogo.modo.id, nivel, { tempo, erros: jogo.erros, jogadas: jogo.jogadas, data: Date.now() });
+    el('r-titulo').textContent = anterior ? 'Novo recorde!' : 'Muito bem!';
+    el('r-recorde').textContent = anterior ? 'Você bateu ' + relogio(anterior.tempo) + '.' : 'Primeiro tempo registrado.';
+  } else {
+    el('r-titulo').textContent = 'Muito bem!';
+    el('r-recorde').textContent = 'Seu melhor tempo: ' + relogio(anterior.tempo) + '.';
+  }
+  el('resultado').classList.add('on');
+}
+
+/* Pausa quando o aparelho é bloqueado ou o app vai para segundo plano,
+   para o cronômetro não punir quem não está jogando. */
+document.addEventListener('visibilitychange', () => {
+  if (!jogo || jogo.fim || !jogo.cronometro) return;
+  if (document.hidden){
+    jogo.decorrido = Date.now() - jogo.inicio;
+    pararCronometro();
+  } else {
+    jogo.inicio = Date.now() - jogo.decorrido;
+    iniciarCronometro();
+  }
+});
+
+/* =========================================================================
+   7. NAVEGAÇÃO
+   ========================================================================= */
+
+function abrir(telaId){
+  document.querySelectorAll('.tela').forEach(t => t.classList.toggle('ativa', t.id === telaId));
+}
+
+function montarMenu(){
+  el('fases').innerHTML = FASES.map(f => {
+    const prontos = MODOS.filter(m => m.fase === f.n).map(m => {
+      const r = lerRecorde(m.id, nivel);
+      return '<button class="item" data-modo="' + m.id + '">' +
+               '<span class="ic">' + m.icone + '</span>' +
+               '<span class="txt">' + m.nome + '</span>' +
+               '<span class="rec">' + (r ? relogio(r.tempo) : '') + '</span>' +
+             '</button>';
+    }).join('');
+
+    const espera = PENDENTES.filter(p => p.fase === f.n).map(p =>
+      '<button class="item" disabled>' +
+        '<span class="ic"></span><span class="txt">' + p.nome + '</span>' +
+        '<span class="breve">em breve</span>' +
+      '</button>').join('');
+
+    return '<div class="fase">' +
+             '<div class="fase-cab"><span class="fase-num">FASE ' + f.n + '</span><h2>' + f.titulo + '</h2></div>' +
+             '<p class="fase-idade">' + f.idade + '</p>' +
+             '<div class="lista">' + prontos + espera + '</div>' +
+           '</div>';
+  }).join('');
+}
+
+document.querySelectorAll('.nivel').forEach(b => {
+  b.addEventListener('click', () => {
+    nivel = b.dataset.nivel;
+    document.querySelectorAll('.nivel').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
+    montarMenu();
+  });
+});
+
+el('fases').addEventListener('click', ev => {
+  const btn = ev.target.closest('.item[data-modo]');
+  if (!btn) return;
+  const modo = MODOS.find(m => m.id === btn.dataset.modo);
+  abrir('tela-jogo');
+  requestAnimationFrame(() => novoJogo(modo));
+});
+
+function sair(){
+  pararCronometro();
+  jogo = null;
+  montarMenu();
+  abrir('tela-menu');
+}
+
+el('btn-sair').addEventListener('click', sair);
+el('r-menu').addEventListener('click', sair);
+el('r-denovo').addEventListener('click', () => novoJogo(jogo.modo));
+el('btn-reiniciar').addEventListener('click', () => { if (jogo) novoJogo(jogo.modo); });
+
+montarMenu();
+</script>
+</body>
+</html>
