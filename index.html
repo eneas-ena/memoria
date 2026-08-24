@@ -95,7 +95,7 @@ h2{font-size:clamp(19px,5vw,26px)}
   perspective:600px;
 }
 .carta .inner{
-  position:relative;width:100%;height:100%;
+  display:block;position:relative;width:100%;height:100%;
   transition:transform .38s cubic-bezier(.4,.9,.3,1.2);
   transform-style:preserve-3d;
 }
@@ -123,7 +123,7 @@ h2{font-size:clamp(19px,5vw,26px)}
 .carta.saiu .inner{opacity:.5}
 
 /* amostra de cor com textura (segunda pista, para daltonismo) */
-.amostra{width:100%;height:100%;position:relative}
+.amostra{display:block;width:100%;height:100%;position:relative}
 .amostra::after{content:"";position:absolute;inset:0;opacity:.28}
 .tx-listras::after{background:repeating-linear-gradient(45deg,#000 0 4px,transparent 4px 10px)}
 .tx-pontos::after{background:radial-gradient(#000 1.6px,transparent 1.7px);background-size:10px 10px}
@@ -439,7 +439,7 @@ function novoJogo(modo){
 }
 
 function desenhar(){
-  tabuleiro.style.setProperty('--cols', jogo.cfg.cols);
+  tabuleiro.style.setProperty('--cols', String(jogo.cfg.cols));
   tabuleiro.innerHTML = jogo.cartas.map((c, i) => {
     const [classe, conteudo] = FACES[c.face.tipo](c.face);
     return '<button class="carta" data-i="' + i + '" aria-label="Carta ' + (i + 1) + '">' +
